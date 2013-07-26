@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:  vtkVRQueueHandler.cxx
+   Module:    vtkVRQueueHandler.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -159,28 +159,29 @@ void pqVRQueueHandler::stop()
 void pqVRQueueHandler::processEvents()
 {
   Q_ASSERT(this->Internals->Queue != NULL);
-  std::queue<vtkVREventData> events;
+  std::queue<vtkVREvent > events;
   this->Internals->Queue->TryDequeue(events);
 
   // Loop through the event queue and pass events to InteractorStyles
   while (!events.empty())
     {
-    vtkVREventData data = events.front();
+    vtkVREvent event = events.front();
     events.pop();
     vtkVRInteractorStyle *style;
     for (this->Internals->Styles->InitTraversal();
          (style = vtkVRInteractorStyle::SafeDownCast(
             this->Internals->Styles->GetNextItemAsObject()));)
       {
-      if (style->HandleEvent(data))
+      if (style->HandleEvent(event))
         {
-        break;
+        break;		// BS: I presume this means, break out of the for loop once an event is handled?
         }
       }
     }
 
   // There should be an explicit update for each handler. Otherwise the server
-  // side updates will not happen
+  //   side updates will not happen
+  //   NOTE: vtkVRTrackStyle.cxx and vtkVRGrabWorldStyle.cxx do NOT have Update() methods!
   vtkVRInteractorStyle *style;
   for (this->Internals->Styles->InitTraversal();
        (style = vtkVRInteractorStyle::SafeDownCast(
@@ -215,6 +216,17 @@ void pqVRQueueHandler::render()
 }
 
 //----------------------------------------------------------------------------
+/* Sample configuration:
+ <VRInteractorStyles>
+    <Style class="vtkVRStyleGrabNRotateWorld">
+      <Button name="wiimote.A"/>
+      <Tracker name="wiimote.tracker"/>
+    </Style>
+    <Style class="vtkVRWandTrackingStyle">
+      <Event name="wiitracker.hand" type = "tracker"/>
+    </Style>
+ </VRInteractorStyles>
+ */
 void pqVRQueueHandler::configureStyles(vtkPVXMLElement* xml,
                                         vtkSMProxyLocator* locator)
 {

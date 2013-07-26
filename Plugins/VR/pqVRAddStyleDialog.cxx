@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    $RCSfile$
+   Module:    pqVRAddStyleDialog.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -32,6 +32,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqVRAddStyleDialog.h"
 #include "ui_pqVRAddStyleDialog.h"
 
+#include "vtkNew.h"
+#include "vtkSMProxy.h"
+#include "vtkStringList.h"
+#include "vtkVRInteractorStyle.h"
+
 #include "pqVRConnectionManager.h"
 #ifdef PARAVIEW_USE_VRPN
 #include "pqVRPNConnection.h"
@@ -39,11 +44,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef PARAVIEW_USE_VRUI
 #include "pqVRUIConnection.h"
 #endif
-
-#include "vtkNew.h"
-#include "vtkSMProxy.h"
-#include "vtkStringList.h"
-#include "vtkVRInteractorStyle.h"
 
 #include <QtGui/QComboBox>
 

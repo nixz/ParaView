@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    $RCSfile$
+   Module:    vtkVRInteractorStyle.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -31,10 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ========================================================================*/
 #include "vtkVRInteractorStyle.h"
 
-#include "pqApplicationCore.h"
-#include "pqProxy.h"
-#include "pqServerManagerModel.h"
-
 #include "vtkObjectFactory.h"
 #include "vtkPVXMLElement.h"
 #include "vtkSMProxy.h"
@@ -42,20 +38,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkStringList.h"
 #include "vtkVRQueue.h"
 
-#include <algorithm>
+#include "pqApplicationCore.h"
+#include "pqProxy.h"
+#include "pqServerManagerModel.h"
+
 #include <sstream>
+#include <algorithm>
 
 // ----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkVRInteractorStyle)
 vtkCxxSetObjectMacro(vtkVRInteractorStyle, ControlledProxy, vtkSMProxy)
 
 // ----------------------------------------------------------------------------
+// Constructor method
 vtkVRInteractorStyle::vtkVRInteractorStyle()
   : Superclass(), ControlledProxy(NULL), ControlledPropertyName(NULL)
 {
 }
 
 // ----------------------------------------------------------------------------
+// Destructor method
 vtkVRInteractorStyle::~vtkVRInteractorStyle()
 {
   this->SetControlledProxy(NULL);
@@ -63,8 +65,46 @@ vtkVRInteractorStyle::~vtkVRInteractorStyle()
 }
 
 // ----------------------------------------------------------------------------
-bool vtkVRInteractorStyle::Configure(vtkPVXMLElement *child,
-                                     vtkSMProxyLocator *locator)
+// PrintSelf() method
+void vtkVRInteractorStyle::PrintSelf(ostream &os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os, indent);
+  os << indent << "ControlledPropertyName: "
+     << this->ControlledPropertyName << endl;
+  if (this->ControlledProxy)
+    {
+    os << indent << "ControlledProxy:" << endl;
+    this->ControlledProxy->PrintSelf(os, indent.GetNextIndent());
+    }
+  else
+    {
+    os << indent << "ControlledProxy: (None)" << endl;
+    }
+
+  vtkIndent nextIndent = indent.GetNextIndent();
+  os << indent << "Analogs:" << endl;
+  for (StringMap::const_iterator it = this->Analogs.begin(),
+       itEnd = this->Analogs.end(); it != itEnd; ++it)
+    {
+    os << nextIndent << it->first.c_str() << ": " << it->second.c_str() << endl;
+    }
+  os << indent << "Buttons:" << endl;
+  for (StringMap::const_iterator it = this->Buttons.begin(),
+       itEnd = this->Buttons.end(); it != itEnd; ++it)
+    {
+    os << nextIndent << it->first.c_str() << ": " << it->second.c_str() << endl;
+    }
+  os << indent << "Trackers:" << endl;
+  for (StringMap::const_iterator it = this->Trackers.begin(),
+       itEnd = this->Trackers.end(); it != itEnd; ++it)
+    {
+    os << nextIndent << it->first.c_str() << ": " << it->second.c_str() << endl;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Configure() method -- to reread from a State file (PVSM file)
+bool vtkVRInteractorStyle::Configure(vtkPVXMLElement *child, vtkSMProxyLocator *locator)
 {
   if (!child->GetName() || strcmp(child->GetName(),"Style") != 0 ||
       strcmp(this->GetClassName(), child->GetAttributeOrEmpty("class")) != 0)
@@ -75,9 +115,9 @@ bool vtkVRInteractorStyle::Configure(vtkPVXMLElement *child,
   // We'll need either the proxyName, or a proxy id and locator in order to set
   // the proxy
   int id = -1;
+  // BS: these two lines are bad code style -- use actual comparisons with 0 rather than trick the compiler
   bool hasProxyName = static_cast<bool>(child->GetAttribute("proxyName"));
-  bool hasProxyId = static_cast<bool>(locator) &&
-      static_cast<bool>(child->GetScalarAttribute("proxy", &id));
+  bool hasProxyId = static_cast<bool>(locator) && static_cast<bool>(child->GetScalarAttribute("proxy", &id));
   if (!hasProxyId && !hasProxyName)
     {
     return false;
@@ -175,8 +215,7 @@ bool vtkVRInteractorStyle::Configure(vtkPVXMLElement *child,
     {
     pqApplicationCore *core = pqApplicationCore::instance();
     pqServerManagerModel *model = core->getServerManagerModel();
-    pqProxy *proxy = model->findItem<pqProxy*>(
-          child->GetAttribute("proxyName"));
+    pqProxy *proxy = model->findItem<pqProxy*>(child->GetAttribute("proxyName"));
     if (proxy)
       {
       this->ControlledProxy = proxy->getProxy();
@@ -204,11 +243,12 @@ bool vtkVRInteractorStyle::Configure(vtkPVXMLElement *child,
 }
 
 // ----------------------------------------------------------------------------
+// SaveConfiguration() method -- to store into a State file (PVSM file)
 vtkPVXMLElement* vtkVRInteractorStyle::SaveConfiguration() const
 {
   vtkPVXMLElement* child = vtkPVXMLElement::New();
   child->SetName("Style");
-  child->AddAttribute("class",this->GetClassName());
+  child->AddAttribute("class", this->GetClassName());
 
   // Look up proxy name -- we'll store both name and id.
   pqApplicationCore *core = pqApplicationCore::instance();
@@ -219,15 +259,10 @@ vtkPVXMLElement* vtkVRInteractorStyle::SaveConfiguration() const
                                    : QString("(unknown)");
   child->AddAttribute("proxyName", qPrintable(name));
 
-  child->AddAttribute("proxy",
-                      this->ControlledProxy
-                      ? this->ControlledProxy->GetGlobalIDAsString()
-                      : "0");
-  if (this->ControlledPropertyName != NULL &&
-      this->ControlledPropertyName[0] != '\0')
+  child->AddAttribute("proxy", (this->ControlledProxy ? this->ControlledProxy->GetGlobalIDAsString() : "0"));
+  if (this->ControlledPropertyName != NULL && this->ControlledPropertyName[0] != '\0')
     {
-    child->AddAttribute("property",
-      this->ControlledPropertyName);
+    child->AddAttribute("property", this->ControlledPropertyName);
     }
 
   for (StringMap::const_iterator it = this->Analogs.begin(),
@@ -264,11 +299,47 @@ vtkPVXMLElement* vtkVRInteractorStyle::SaveConfiguration() const
   return child;
 }
 
+// -----------------------------------------------------------------------------
+// Update() method -- empty in the generic class
+bool vtkVRInteractorStyle::Update()
+{
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+// HandleButton() method -- empty in the generic class
+void vtkVRInteractorStyle::HandleButton(const vtkVREvent& vtkNotUsed(event))
+{
+}
+
+// ----------------------------------------------------------------------------
+// HandleAnalog() method -- empty in the generic class
+void vtkVRInteractorStyle::HandleAnalog(const vtkVREvent& vtkNotUsed(event))
+{
+}
+
+// ----------------------------------------------------------------------------
+// HandleTracker() method -- empty in the generic class
+void vtkVRInteractorStyle::HandleTracker(const vtkVREvent& vtkNotUsed(event))
+{
+}
+
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// The methods below this divider are ones that are NOT over-written by the
+// decendant classes.
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+
 // ----------------------------------------------------------------------------
 std::vector<std::string> vtkVRInteractorStyle::Tokenize( std::string input)
 {
-  std::replace( input.begin(), input.end(), '.', ' ' );
-  std::istringstream stm( input );
+  std::replace(input.begin(), input.end(), '.', ' ');
+  std::istringstream stm(input);
   std::vector<std::string> token;
   for (;;)
     {
@@ -311,8 +382,7 @@ void vtkVRInteractorStyle::MapKeysToStringList(const StringMap &source,
 
 // ----------------------------------------------------------------------------
 bool vtkVRInteractorStyle::SetValueInMap(
-    StringMap &map_,
-    const vtkStdString &key, const vtkStdString &value)
+    StringMap &map_, const vtkStdString &key, const vtkStdString &value)
 {
   StringMap::iterator it = map_.find(key);
   if (it != map_.end())
@@ -328,7 +398,7 @@ vtkStdString vtkVRInteractorStyle::GetValueInMap(const StringMap &map_,
                                                  const vtkStdString &key)
 {
   StringMap::const_iterator it = map_.find(key);
-  return it != map_.end() ? it->second : vtkStdString();
+  return (it != map_.end() ? it->second : vtkStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -347,27 +417,21 @@ vtkStdString vtkVRInteractorStyle::GetKeyInMap(const StringMap &map_,
 }
 
 // ----------------------------------------------------------------------------
-bool vtkVRInteractorStyle::HandleEvent(const vtkVREventData& data)
+bool vtkVRInteractorStyle::HandleEvent(const vtkVREvent& event)
 {
-  switch( data.eventType )
+  switch(event.eventType)
     {
     case BUTTON_EVENT:
-      this->HandleButton( data );
+      this->HandleButton(event);
       break;
     case ANALOG_EVENT:
-      this->HandleAnalog( data );
+      this->HandleAnalog(event);
       break;
     case TRACKER_EVENT:
-      this->HandleTracker( data );
+      this->HandleTracker(event);
       break;
     }
   return false;
-}
-
-// -----------------------------------------------------------------------------
-bool vtkVRInteractorStyle::Update()
-{
-  return true;
 }
 
 // ----------------------------------------------------------------------------
@@ -463,54 +527,3 @@ vtkStdString vtkVRInteractorStyle::GetTrackerName(const vtkStdString &role)
   return this->GetValueInMap(this->Trackers, role);
 }
 
-// ----------------------------------------------------------------------------
-void vtkVRInteractorStyle::HandleButton( const vtkVREventData& vtkNotUsed( data ) )
-{
-}
-
-// ----------------------------------------------------------------------------
-void vtkVRInteractorStyle::HandleAnalog( const vtkVREventData& vtkNotUsed( data ) )
-{
-}
-
-// ----------------------------------------------------------------------------
-void vtkVRInteractorStyle::HandleTracker( const vtkVREventData& vtkNotUsed( data ) )
-{
-}
-
-// ----------------------------------------------------------------------------
-void vtkVRInteractorStyle::PrintSelf(ostream &os, vtkIndent indent)
-{
-  this->Superclass::PrintSelf(os, indent);
-  os << indent << "ControlledPropertyName: "
-     << this->ControlledPropertyName << endl;
-  if (this->ControlledProxy)
-    {
-    os << indent << "ControlledProxy:" << endl;
-    this->ControlledProxy->PrintSelf(os, indent.GetNextIndent());
-    }
-  else
-    {
-    os << indent << "ControlledProxy: (None)" << endl;
-    }
-
-  vtkIndent nextIndent = indent.GetNextIndent();
-  os << indent << "Analogs:" << endl;
-  for (StringMap::const_iterator it = this->Analogs.begin(),
-       itEnd = this->Analogs.end(); it != itEnd; ++it)
-    {
-    os << nextIndent << it->first.c_str() << ": " << it->second.c_str() << endl;
-    }
-  os << indent << "Buttons:" << endl;
-  for (StringMap::const_iterator it = this->Buttons.begin(),
-       itEnd = this->Buttons.end(); it != itEnd; ++it)
-    {
-    os << nextIndent << it->first.c_str() << ": " << it->second.c_str() << endl;
-    }
-  os << indent << "Trackers:" << endl;
-  for (StringMap::const_iterator it = this->Trackers.begin(),
-       itEnd = this->Trackers.end(); it != itEnd; ++it)
-    {
-    os << nextIndent << it->first.c_str() << ": " << it->second.c_str() << endl;
-    }
-}

@@ -1,7 +1,8 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    $RCSfile$
+   Module:    vtkVRInteractorStyleFactory.cxx
+
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -33,22 +34,32 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkVRInteractorStyleFactory.h"
 
 #include "vtkObjectFactory.h"
-#include "vtkVRControlSliceOrientationStyle.h"
-#include "vtkVRControlSlicePositionStyle.h"
-#include "vtkVRGrabWorldStyle.h"
-#include "vtkVRSpaceNavigatorGrabWorldStyle.h"
 #include "vtkVRTrackStyle.h"
+#include "vtkVRGrabWorldStyle.h"
+#include "vtkVRControlSlicePositionStyle.h"
+#include "vtkVRControlSliceOrientationStyle.h"
+#include "vtkVRSpaceNavigatorGrabWorldStyle.h"
+#include "vtkVRSkeletonStyle.h"
 
 //-----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkVRInteractorStyleFactory)
 vtkVRInteractorStyleFactory *vtkVRInteractorStyleFactory::Instance = NULL;
 
 //-----------------------------------------------------------------------------
+// Constructor() method
+//   This is where all the InteractorStyle classes are connected to the VR Plugin.
+//   This should be the ONLY place where interactor styles are mentioned by name.
+//   TODO: figure out how to store an array of New() methods so the
+//     NewInteractorStyleFromClassName() method doesn't have to explicitly
+//     refer to named classes.
 vtkVRInteractorStyleFactory::vtkVRInteractorStyleFactory()
 {
   // Add TrackStyle
   this->InteractorStyleClassNames.push_back("vtkVRTrackStyle");
   this->InteractorStyleDescriptions.push_back("Track");
+#if 0 /* TODO: (BS) We need to figure out how to store an array of New methods */
+  this->InteractorStyleNewMethods.push_back((vtkVRInteractorStyle *)(vtkVRTrackStyle::New));
+#endif
 
   // Add GrabWorldStyle
   this->InteractorStyleClassNames.push_back("vtkVRGrabWorldStyle");
@@ -65,6 +76,13 @@ vtkVRInteractorStyleFactory::vtkVRInteractorStyleFactory()
   // Add SpaceNavigatorGrabWorldStye
   this->InteractorStyleClassNames.push_back("vtkVRSpaceNavigatorGrabWorldStyle");
   this->InteractorStyleDescriptions.push_back("Space Navigator Grab");
+
+  // Add SkeletonStyle
+  this->InteractorStyleClassNames.push_back("vtkVRSkeletonStyle");
+  this->InteractorStyleDescriptions.push_back("Skeleton");
+#if 0 /* TODO: (BS) We need to figure out how to store an array of New methods */
+  this->InteractorStyleNewMethods.push_back((vtkVRInteractorStyle *)(vtkVRSkeletonStyle::New));
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -128,7 +146,11 @@ vtkVRInteractorStyle *
 vtkVRInteractorStyleFactory::NewInteractorStyleFromClassName(
     const std::string &name)
 {
-  if (name == "vtkVRTrackStyle")
+  if (name == "vtkVRSkeletonStyle")
+    {
+    return vtkVRSkeletonStyle::New();
+    }
+  else if (name == "vtkVRTrackStyle")
     {
     return vtkVRTrackStyle::New();
     }

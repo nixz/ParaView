@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    $RCSfile$
+   Module:    vtkVRControlSlicePositionStyle.h
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -57,8 +57,8 @@ protected:
   vtkVRControlSlicePositionStyle();
   ~vtkVRControlSlicePositionStyle();
 
-  void HandleButton(const vtkVREventData& data);
-  void HandleTracker(const vtkVREventData& data);
+  void HandleButton(const vtkVREvent& event);
+  void HandleTracker(const vtkVREvent& event);
 
   bool Enabled;
   bool InitialPositionRecorded;
@@ -66,9 +66,8 @@ protected:
   vtkNew<vtkMatrix4x4> InitialInvertedPose;
 
 private:
-  // Not implemented:
-  vtkVRControlSlicePositionStyle(const vtkVRControlSlicePositionStyle&);
-  void operator=(const vtkVRControlSlicePositionStyle&);
+  vtkVRControlSlicePositionStyle(const vtkVRControlSlicePositionStyle&); // Not implemented
+  void operator=(const vtkVRControlSlicePositionStyle&); // Not implemented
 };
 
-#endif
+#endif //__vtkVRControlSlicePositionStyle.h_

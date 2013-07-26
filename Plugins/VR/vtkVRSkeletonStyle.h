@@ -1,7 +1,8 @@
 /*=========================================================================
+ * NOTE !!!! This is really a test Interactor Style until I learn how to include new ones!
 
    Program: ParaView
-   Module:    vtkVRSpaceNavigatorGrabWorldStyle.h
+   Module:    vtkVRSkeletonStyle.h
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -29,35 +30,48 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ========================================================================*/
-#ifndef __vtkVRSpaceNavigatorGrabWorldStyle_h_
-#define __vtkVRSpaceNavigatorGrabWorldStyle_h_
+#ifndef __vtkVRSkeletonStyle_h_
+#define __vtkVRSkeletonStyle_h_
 
 #include "vtkVRInteractorStyle.h"
+#include "vtkNew.h"
 
+class vtkCamera;
+class vtkMatrix4x4;
+class vtkSMRenderViewProxy;
 class vtkSMDoubleVectorProperty;
 class vtkSMIntVectorProperty;
-class vtkSMProxy;
-class vtkSMRenderViewProxy;
-class vtkTransform;
-
 struct vtkVREvent;
 
-class vtkVRSpaceNavigatorGrabWorldStyle : public vtkVRInteractorStyle
+class vtkVRSkeletonStyle : public vtkVRInteractorStyle
 {
 public:
-  static vtkVRSpaceNavigatorGrabWorldStyle *New();
-  vtkTypeMacro(vtkVRSpaceNavigatorGrabWorldStyle, vtkVRInteractorStyle)
+  static vtkVRSkeletonStyle *New();
+  vtkTypeMacro(vtkVRSkeletonStyle, vtkVRInteractorStyle)
   void PrintSelf(ostream &os, vtkIndent indent);
 
 protected:
-  vtkVRSpaceNavigatorGrabWorldStyle();
-  ~vtkVRSpaceNavigatorGrabWorldStyle();
+  vtkVRSkeletonStyle();
+  ~vtkVRSkeletonStyle();
 
-  virtual void HandleAnalog (const vtkVREvent& data);
+  virtual void HandleButton(const vtkVREvent& event);
+  virtual void HandleAnalog(const vtkVREvent& event);
+  virtual void HandleTracker(const vtkVREvent& event);
+
+  bool EnableReport;
+
+  bool IsInitialTransRecorded;
+  bool IsInitialRotRecorded;
+
+  vtkNew<vtkMatrix4x4> InverseInitialTransMatrix;
+  vtkNew<vtkMatrix4x4> InverseInitialRotMatrix;
+
+  vtkNew<vtkMatrix4x4> CachedTransMatrix;
+  vtkNew<vtkMatrix4x4> CachedRotMatrix;
 
 private:
-  vtkVRSpaceNavigatorGrabWorldStyle(const vtkVRSpaceNavigatorGrabWorldStyle&); // Not implemented.
-  void operator=(const vtkVRSpaceNavigatorGrabWorldStyle&); // Not implemented.
+  vtkVRSkeletonStyle(const vtkVRSkeletonStyle&); // Not implemented
+  void operator=(const vtkVRSkeletonStyle&); // Not implemented
 };
 
-#endif //__vtkVRSpaceNavigatorGrabWorldStyle.h_
+#endif //__vtkVRSkeletonStyle.h_

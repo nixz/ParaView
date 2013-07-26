@@ -49,10 +49,10 @@ vtkVRQueue::~vtkVRQueue()
 }
 
 //----------------------------------------------------------------------------
-void vtkVRQueue::Enqueue(const vtkVREventData& data)
+void vtkVRQueue::Enqueue(const vtkVREvent& event)
 {
   this->Mutex->Lock();
-  this->Queue.push(data);
+  this->Queue.push(event);
   this->Mutex->Unlock();
   this->CondVar->Signal();
 }
@@ -67,14 +67,14 @@ bool vtkVRQueue::IsEmpty() const
 }
 
 //----------------------------------------------------------------------------
-bool vtkVRQueue::TryDequeue(vtkVREventData& data)
+bool vtkVRQueue::TryDequeue(vtkVREvent& event)
 {
   this->Mutex->Lock();
   bool result = false;
   if (!this->Queue.empty())
     {
     result = true;
-    data = this->Queue.front();
+    event = this->Queue.front();
     this->Queue.pop();
     }
   this->Mutex->Unlock();
@@ -83,7 +83,7 @@ bool vtkVRQueue::TryDequeue(vtkVREventData& data)
 }
 
 //----------------------------------------------------------------------------
-void vtkVRQueue::Dequeue(vtkVREventData& data)
+void vtkVRQueue::Dequeue(vtkVREvent& event)
 {
   this->Mutex->Lock();
   while (this->Queue.empty())
@@ -91,19 +91,19 @@ void vtkVRQueue::Dequeue(vtkVREventData& data)
     this->CondVar->Wait(this->Mutex.GetPointer());
     }
 
-  data = this->Queue.front();
+  event = this->Queue.front();
   this->Queue.pop();
   this->Mutex->Unlock();
 }
 
 //----------------------------------------------------------------------------
-bool vtkVRQueue::TryDequeue(std::queue<vtkVREventData> &data)
+bool vtkVRQueue::TryDequeue(std::queue<vtkVREvent> &event)
 {
   this->Mutex->Lock();
   bool result = false;
   if (!this->Queue.empty())
     {
-    data = this->Queue;
+    event = this->Queue;
     while (!this->Queue.empty())
       {
       this->Queue.pop();

@@ -40,7 +40,7 @@ class vtkSMProxy;
 class vtkSMRenderViewProxy;
 class vtkTransform;
 
-struct vtkVREventData;
+struct vtkVREvent;
 
 class vtkVRTrackStyle : public vtkVRInteractorStyle
 {
@@ -54,7 +54,7 @@ public:
 protected:
   vtkVRTrackStyle();
   ~vtkVRTrackStyle();
-  virtual void HandleTracker( const vtkVREventData& data );
+  virtual void HandleTracker(const vtkVREvent& event);
 
 private:
   vtkVRTrackStyle(const vtkVRTrackStyle&); // Not implemented.

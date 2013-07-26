@@ -30,32 +30,40 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ========================================================================*/
 #include "vtkVRUIPipe.h"
-#include <cassert>
-#include <unistd.h>
+
+#include "vtkVRUIServerState.h"
+
 #ifdef QTSOCK
 #include <QTcpSocket>
 #else
 #include <QDebug>
 #endif
-#include "vtkVRUIServerState.h"
 
-typedef unsigned short MessageTagPropocol;
+#include <cassert>
+#include <unistd.h>
+
+//typedef unsigned short MessageTagProtocol;
+typedef uint16_t MessageTagProtocol;
 
 // ----------------------------------------------------------------------------
+// Constructor method
 #ifdef QTSOCK
 vtkVRUIPipe::vtkVRUIPipe(QTcpSocket *socket)
 {
-  assert("pre: socket_exist" && socket!=0);
+  assert("pre: socket_exist" && socket != 0);
   this->Socket=socket;
+  this->protocol = 0;		/* NOTE: this is where the VRUI protocol is specified */
 }
 #else
 vtkVRUIPipe::vtkVRUIPipe(int socket)
 {
   this->Socket=socket;
+  this->protocol = 0;		/* NOTE: this is where the VRUI protocol is specified */
 }
 #endif
 
 // ----------------------------------------------------------------------------
+// Destructor method
 vtkVRUIPipe::~vtkVRUIPipe()
 {
 }
@@ -63,20 +71,31 @@ vtkVRUIPipe::~vtkVRUIPipe()
 // ----------------------------------------------------------------------------
 void vtkVRUIPipe::Send(MessageTag m)
 {
-  MessageTagPropocol message=m;
-  //std::cout << "Sending : " << this->GetString( m ) << std::endl;
+  MessageTagProtocol message=m;
+  //std::cout << "Sending : " << this->GetString(m) << std::endl;
 #ifdef QTSOCK
-  this->Socket->write(reinterpret_cast<const char*>(&message),
-                      sizeof(MessageTagPropocol));
+  this->Socket->write(reinterpret_cast<const char*>(&message), sizeof(message));
   this->Socket->flush();
 #else
-  write(this->Socket, reinterpret_cast<const char*>(&message),
-                      sizeof(MessageTagPropocol));
+  write(this->Socket, reinterpret_cast<const char*>(&message), sizeof(message));
 #endif
 }
 
 // ----------------------------------------------------------------------------
-bool vtkVRUIPipe::WaitForServerReply(int vtkNotUsed( msecs ))
+void vtkVRUIPipe::Send(uint32_t value)
+{
+  uint32_t message=value;
+  //std::cout << "Sending : " << this->GetString( m ) << std::endl;
+#ifdef QTSOCK
+  this->Socket->write(reinterpret_cast<const char*>(&message), sizeof(message));
+  this->Socket->flush();
+#else
+  write(this->Socket, reinterpret_cast<const char*>(&message), sizeof(message));
+#endif
+}
+
+// ----------------------------------------------------------------------------
+bool vtkVRUIPipe::WaitForServerReply(int vtkNotUsed(msecs))
 {
 #ifdef QTSOCK
   //std::cout<< "in" <<std::endl;
@@ -91,29 +110,29 @@ bool vtkVRUIPipe::WaitForServerReply(int vtkNotUsed( msecs ))
 // ----------------------------------------------------------------------------
 vtkVRUIPipe::MessageTag vtkVRUIPipe::Receive()
 {
-  MessageTagPropocol message;
+  MessageTagProtocol message;
 
   qint64 bytes=0;
 
-  while(bytes!=sizeof(MessageTagPropocol)) // 2
+  while (bytes!=sizeof(MessageTagProtocol)) // 2
     {
     //std::cout<< "Waiting to recieve" <<std::endl;
 #ifdef QTSOCK
     bytes=this->Socket->read(reinterpret_cast<char *>(&message),
-                             sizeof(MessageTagPropocol));
+                             sizeof(MessageTagProtocol));
 #else
     bytes=read(this->Socket,reinterpret_cast<char *>(&message),
-                             sizeof(MessageTagPropocol));
+                             sizeof(MessageTagProtocol));
     if (bytes < 0) {
         qDebug() << "Socket read error";
     }
 #endif
 #ifdef VRUI_ENABLE_DEBUG
-    if ( bytes )
+    if (bytes != 0)
       cout << "bytes=" << bytes << endl;
 
-  cout << "sizeof=" << sizeof(MessageTagPropocol) <<  endl;
-  std::cout << "Recieved : "
+  cout << "sizeof=" << sizeof(MessageTagProtocol) <<  endl;
+  std::cout << "Recieved: "
             << this->GetString( static_cast<MessageTag>( message ) )
             << static_cast<MessageTag>( message )
             << std::endl;
@@ -127,54 +146,68 @@ void vtkVRUIPipe::ReadLayout(vtkVRUIServerState *state)
 {
   assert("pre: state_exists" && state!=0);
 
-  int value;
-#ifdef QTSOCK
-  this->Socket->read(reinterpret_cast<char *>(&value),sizeof(int));
-#else
-  ssize_t bytes;
-  bytes = read(this->Socket, reinterpret_cast<char *>(&value),sizeof(int));
+  uint32_t value;	/* Generic 4-byte "value" returned by VRUI VRDeviceDaemon */
+  ssize_t bytes;	/* The number of bytes returned from a socket read */
+
+  cout << "Internally defined protocol is " << this->protocol << endl;
+  /* Read the protocol value */
+  if (this->protocol > 0) {
+    cout << "Reading Vrui Protocol value" << endl;
+    bytes = read(this->Socket, reinterpret_cast<char *>(&value), sizeof(value));
     if (bytes < 0) {
-#ifdef VRUI_ENABLE_DEBUG
+        qDebug() << "Socket readlayout protocol number error";
+    }
+    cout << "Vrui Server reporting: protocol " << value << endl;
+  }
+
+  /* Read the number of 6-DOF position trackers */
+#ifdef QTSOCK
+  this->Socket->read(reinterpret_cast<char *>(&value), sizeof(value));
+#else
+  bytes = read(this->Socket, reinterpret_cast<char *>(&value), sizeof(value));
+    if (bytes < 0) {
         qDebug() << "Socket readlayout tracker error";
-#endif
     }
 #endif
   state->GetTrackerStates()->resize(value);
   int i=0;
-  while(i<value)
+  while (i<value)
     {
     (*(state->GetTrackerStates()))[i]=vtkVRUITrackerState::New();
     ++i;
     }
 
-  cout << "number of trackers: " << value << endl;
+  cout << "Vrui Server reporting: " << value << " trackers" << endl;
 
+  /* Read the number of buttons */
 #ifdef QTSOCK
-  this->Socket->read(reinterpret_cast<char *>(&value),sizeof(int));
+  this->Socket->read(reinterpret_cast<char *>(&value), sizeof(value));
 #else
-  bytes = read(this->Socket, reinterpret_cast<char *>(&value),sizeof(int));
+  bytes = read(this->Socket, reinterpret_cast<char *>(&value), sizeof(value));
     if (bytes < 0) {
         qDebug() << "Socket readlayout buttons error";
     }
 #endif
   state->GetButtonStates()->resize(value);
 
-  cout << "number of buttons: " << value << endl;
+  cout << "Vrui Server reporting: " << value << " buttons" << endl;
 
+  /* Read the number of valuators */
 #ifdef QTSOCK
-  this->Socket->read(reinterpret_cast<char *>(&value),sizeof(int));
+  this->Socket->read(reinterpret_cast<char *>(&value), sizeof(value));
 #else
-  bytes = read(this->Socket, reinterpret_cast<char *>(&value),sizeof(int));
+  bytes = read(this->Socket, reinterpret_cast<char *>(&value), sizeof(value));
     if (bytes < 0) {
         qDebug() << "Socket readlayout valuators error";
     }
 #endif
   state->GetValuatorStates()->resize(value);
 
-  cout << "number of valuators: " << value << endl;
+  cout << "Vrui Server reporting: " << value << " valuators " << endl;
 }
 
 // ----------------------------------------------------------------------------
+// WARNING: this assumes that floats are 32bits (4 bytes) -- also assumes little endian
 void vtkVRUIPipe::ReadState(vtkVRUIServerState *state)
 {
   assert("pre: state_exists" && state!=0);
@@ -186,27 +219,27 @@ void vtkVRUIPipe::ReadState(vtkVRUIServerState *state)
 
   quint64 readSize;
 
-  while(i<c)
+  while (i<c)
     {
     vtkVRUITrackerState *tracker=(*trackers)[i].GetPointer();
 #ifdef QTSOCK
     readSize = this->Socket->read(reinterpret_cast<char *>(tracker->GetPosition()), 3*sizeof(float));
-    if(readSize < 3 * sizeof(float)){qDebug() << "position: " << readSize;}
+    if (readSize < 3 * sizeof(float)) {qDebug() << "position: " << readSize;}
     readSize = this->Socket->read(reinterpret_cast<char *>(tracker->GetUnitQuaternion()), 4*sizeof(float));
-    if(readSize < 4 * sizeof(float)){qDebug() << "quat:" << readSize;}
+    if (readSize < 4 * sizeof(float)) {qDebug() << "quat:" << readSize;}
     readSize = this->Socket->read(reinterpret_cast<char *>(tracker->GetLinearVelocity()), 3*sizeof(float));
-    if(readSize < 3 * sizeof(float)){qDebug() << "lv: " << readSize;}
+    if (readSize < 3 * sizeof(float)) {qDebug() << "lv: " << readSize;}
     readSize = this->Socket->read(reinterpret_cast<char *>(tracker->GetAngularVelocity()), 3*sizeof(float));
-    if(readSize < 3 * sizeof(float)){qDebug() << "av: " << readSize;}
+    if (readSize < 3 * sizeof(float)) {qDebug() << "av: " << readSize;}
 #else
     readSize = read(this->Socket, reinterpret_cast<char *>(tracker->GetPosition()), 3*sizeof(float));
-    if(readSize < 3 * sizeof(float)){qDebug() << "position: " << readSize;}
+    if (readSize < 3 * sizeof(float)) {qDebug() << "position: " << readSize;}
     readSize = read(this->Socket, reinterpret_cast<char *>(tracker->GetUnitQuaternion()), 4*sizeof(float));
-    if(readSize < 4 * sizeof(float)){qDebug() << "quat:" << readSize;}
+    if (readSize < 4 * sizeof(float)) {qDebug() << "quat:" << readSize;}
     readSize = read(this->Socket, reinterpret_cast<char *>(tracker->GetLinearVelocity()), 3*sizeof(float));
-    if(readSize < 3 * sizeof(float)){qDebug() << "lv: " << readSize;}
+    if (readSize < 3 * sizeof(float)) {qDebug() << "lv: " << readSize;}
     readSize = read(this->Socket, reinterpret_cast<char *>(tracker->GetAngularVelocity()), 3*sizeof(float));
-    if(readSize < 3 * sizeof(float)){qDebug() << "av: " << readSize;}
+    if (readSize < 3 * sizeof(float)) {qDebug() << "av: " << readSize;}
 #endif
     ++i;
     }
@@ -214,15 +247,15 @@ void vtkVRUIPipe::ReadState(vtkVRUIServerState *state)
   std::vector<bool> *buttons=state->GetButtonStates();
   i=0;
   c=buttons->size();
-  while(i<c)
+  while (i<c)
     {
     bool value;
 #ifdef QTSOCK
-    readSize = this->Socket->read(reinterpret_cast<char *>(&value), sizeof(bool));
+    readSize = this->Socket->read(reinterpret_cast<char *>(&value), sizeof(value));
 #else
-    readSize = read(this->Socket, reinterpret_cast<char *>(&value), sizeof(bool));
+    readSize = read(this->Socket, reinterpret_cast<char *>(&value), sizeof(value));
 #endif
-    if(readSize < sizeof(bool)){qDebug() << "button : " << i <<  readSize;}
+    if (readSize < sizeof(value)) {qDebug() << "button : " << i <<  readSize;}
     (*buttons)[i]=value;
     ++i;
     }
@@ -231,15 +264,15 @@ void vtkVRUIPipe::ReadState(vtkVRUIServerState *state)
   std::vector<float> *valuators=state->GetValuatorStates();
   i=0;
   c=valuators->size();
-  while(i<c)
+  while (i<c)
     {
     float value;
 #ifdef QTSOCK
-    readSize  = this->Socket->read(reinterpret_cast<char *>(&value), sizeof(float));
+    readSize = this->Socket->read(reinterpret_cast<char *>(&value), sizeof(value));
 #else
-    readSize  = read(this->Socket, reinterpret_cast<char *>(&value), sizeof(float));
+    readSize = read(this->Socket, reinterpret_cast<char *>(&value), sizeof(value));
 #endif
-    if(readSize < sizeof(float)){qDebug() << "analog : " << i <<  readSize;}
+    if (readSize < sizeof(value)) {qDebug() << "analog : " << i <<  readSize;}
     (*valuators)[i]=value;
     ++i;
     }

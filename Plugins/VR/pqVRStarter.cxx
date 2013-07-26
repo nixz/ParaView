@@ -30,18 +30,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ========================================================================*/
 #include "pqVRStarter.h"
-#include <QtDebug>
-#include <QTimer>
+
 #include "vtkPVVRConfig.h"
 #include "vtkProcessModule.h"
 #include "vtkPVXMLElement.h"
 #include "vtkVRInteractorStyleFactory.h"
 #include "vtkVRQueue.h"
+
 #include "pqVRQueueHandler.h"
 #include "pqApplicationCore.h"
 #include "pqTestUtility.h"
 #include "pqVRConnectionManager.h"
 #include "pqWidgetEventPlayer.h"
+
+#include <QtDebug>
+#include <QTimer>
 
 // Used for testing:
 #ifdef PARAVIEW_USE_VRPN

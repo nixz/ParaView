@@ -1,7 +1,7 @@
 /*=========================================================================
 
-  Program: ParaView
-  Module:  vtkVRConnectionManager.cxx
+   Program: ParaView
+   Module:    vtkVRConnectionManager.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -31,7 +31,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 =========================================================================*/
 #include "pqVRConnectionManager.h"
 
-// --------------------------------------------------------------------includes
+#include "vtkObjectFactory.h"
+#include "vtkPVVRConfig.h"
+#include "vtkPVXMLElement.h"
+#include "vtkVRQueue.h"
+#include "vtkWeakPointer.h"
+
 #include "pqApplicationCore.h"
 #ifdef PARAVIEW_USE_VRPN
 #include "pqVRPNConnection.h"
@@ -39,12 +44,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef PARAVIEW_USE_VRUI
 #include "pqVRUIConnection.h"
 #endif
-
-#include "vtkObjectFactory.h"
-#include "vtkPVVRConfig.h"
-#include "vtkPVXMLElement.h"
-#include "vtkVRQueue.h"
-#include "vtkWeakPointer.h"
 
 #include <QList>
 #include <QtDebug>
@@ -331,8 +330,7 @@ void pqVRConnectionManager::configureConnections( vtkPVXMLElement* xml,
             }
           else
             {
-            qWarning() << "Unknown Connection type : \""
-                       << child->GetName() << "\"";
+            qWarning() << "Unknown Connection type : \"" << child->GetName() << "\"";
             }
           }
         }

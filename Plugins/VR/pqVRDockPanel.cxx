@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    $RCSfile$
+   Module:    pqVRDockPanel.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -32,6 +32,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pqVRDockPanel.h"
 #include "ui_pqVRDockPanel.h"
 
+#include "vtkCamera.h"
+#include "vtkCommand.h"
+#include "vtkMatrix4x4.h"
+#include "vtkPVXMLElement.h"
+#include "vtkPVXMLParser.h"
+#include "vtkSMRenderViewProxy.h"
+#include "vtkVRInteractorStyle.h"
+#include "vtkVRInteractorStyleFactory.h"
+#include "vtkWeakPointer.h"
+
 #include "pqActiveObjects.h"
 #include "pqApplicationCore.h"
 #include "pqCoreUtilities.h"
@@ -52,16 +62,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef PARAVIEW_USE_VRUI
 #include "pqVRUIConnection.h"
 #endif
-
-#include "vtkCamera.h"
-#include "vtkCommand.h"
-#include "vtkMatrix4x4.h"
-#include "vtkPVXMLElement.h"
-#include "vtkPVXMLParser.h"
-#include "vtkSMRenderViewProxy.h"
-#include "vtkVRInteractorStyle.h"
-#include "vtkVRInteractorStyleFactory.h"
-#include "vtkWeakPointer.h"
 
 #include <QtGui/QListWidgetItem>
 

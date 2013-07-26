@@ -33,15 +33,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "vtkObjectFactory.h"
 #include "vtkPVXMLElement.h"
-#include "vtkRenderer.h"
-#include "vtkRenderWindow.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMProxy.h"
-#include "vtkSMProxyLocator.h"
-#include "vtkSMRenderViewProxy.h"
-#include "vtkVRQueue.h"
-#include "vtkCamera.h"
-#include "vtkMath.h"
+#include "vtkSMRenderViewProxy.h"	/* for acquiring the active camera */
+#include "vtkVRQueue.h"			/* for the vtkVREvent structure */
+#include "vtkCamera.h"			/* needed by vtkSMRenderViewProxy.h */
+#include "vtkMath.h"			/* needed for Cross product function */
 
 #include <sstream>
 #include <algorithm>
@@ -50,76 +47,89 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 vtkStandardNewMacro(vtkVRSpaceNavigatorGrabWorldStyle)
 
 // ----------------------------------------------------------------------------
+// Constructor method
 vtkVRSpaceNavigatorGrabWorldStyle::vtkVRSpaceNavigatorGrabWorldStyle() :
   Superclass()
 {
-  this->AddAnalogRole( "Move" );
+  this->AddAnalogRole("Move");
 }
 
 // ----------------------------------------------------------------------------
+// Destructor method
 vtkVRSpaceNavigatorGrabWorldStyle::~vtkVRSpaceNavigatorGrabWorldStyle()
 {
 }
 
 // ----------------------------------------------------------------------------
-void vtkVRSpaceNavigatorGrabWorldStyle::HandleAnalog ( const vtkVREventData& data )
-{
-  vtkStdString role = this->GetAnalogRole(data.name);
-  if (role == "Move")
-    {
-    // Values for Space Navigator
-    if ( data.data.analog.num_channel != 6 )
-      {
-      return;
-      }
-
-    vtkSMRenderViewProxy * viewProxy = vtkSMRenderViewProxy::SafeDownCast( this->ControlledProxy );
-    if ( viewProxy )
-      {
-      vtkCamera* camera;
-      double pos[3], fp[3], up[3], dir[3];
-      double orient[3];
-      const double *channel = data.data.analog.channel;
-
-      camera = viewProxy->GetActiveCamera();
-
-      camera->GetPosition( pos );
-      camera->GetFocalPoint( fp );
-      camera->GetDirectionOfProjection( dir );
-      camera->OrthogonalizeViewUp();
-      camera->GetViewUp( up );
-
-      // Apply up-down motion
-      for (int i = 0; i < 3; i++)
-        {
-        double dx = 0.05*channel[2]*up[i];
-        pos[i] += dx;
-        fp[i]  += dx;
-        }
-
-      // Apply right-left motion
-      double r[3];
-      vtkMath::Cross(dir, up, r);
-
-      for (int i = 0; i < 3; i++)
-        {
-        double dx = -0.05*channel[0]*r[i];
-        pos[i] += dx;
-        fp[i]  += dx;
-        }
-
-      camera->SetPosition(pos);
-      camera->SetFocalPoint(fp);
-
-      camera->Dolly(pow(1.01, channel[1]));
-      camera->Elevation(  1.0*channel[3]);
-      camera->Azimuth(    1.0*channel[5]);
-      camera->Roll(       1.0*channel[4]);
-      }
-    }
-}
-
+// PrintSelf() method
 void vtkVRSpaceNavigatorGrabWorldStyle::PrintSelf(ostream &os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
 }
+
+// ----------------------------------------------------------------------------
+// HandleAnalog() method
+void vtkVRSpaceNavigatorGrabWorldStyle::HandleAnalog ( const vtkVREvent& event )
+{
+  vtkStdString role = this->GetAnalogRole(event.name);
+  if (role == "Move")
+    {
+    // A Space Navigator will have 6 analog data streams.  Ignore data
+    //   if this input does not match this parameter of the Space Navigator.
+    if (event.data.analog.num_channels != 6)
+      {
+      return;
+      }
+
+    vtkSMRenderViewProxy *viewProxy = vtkSMRenderViewProxy::SafeDownCast(this->ControlledProxy);
+    if (viewProxy)
+      {
+      vtkCamera* camera;
+#define MOVEMENT_FACTOR 0.05
+      double camera_location[3];
+      double focal_point[3];
+      double up_vector[3];
+      double forward_vector[3];
+      double orient[3];
+      const double *analog_input = event.data.analog.channel;
+
+      camera = viewProxy->GetActiveCamera();
+
+      camera->GetPosition(camera_location);
+      camera->GetFocalPoint(focal_point);
+      camera->GetDirectionOfProjection(forward_vector);
+      camera->OrthogonalizeViewUp();
+      camera->GetViewUp(up_vector);
+
+      // Apply up-down motion
+      for (int i = 0; i < 3; i++)
+        {
+        double dx = MOVEMENT_FACTOR * analog_input[2] * up_vector[i];
+        camera_location[i] += dx;
+        focal_point[i]  += dx;
+        }
+
+      // Apply right-left motion
+      double side_vector[3];
+      vtkMath::Cross(forward_vector, up_vector, side_vector);
+
+      for (int i = 0; i < 3; i++)
+        {
+        double dx = -MOVEMENT_FACTOR * analog_input[0] * side_vector[i];
+        camera_location[i] += dx;
+        focal_point[i]  += dx;
+        }
+
+      // Set the two calculated camera values
+      camera->SetPosition(camera_location);
+      camera->SetFocalPoint(focal_point);
+
+      // Set all the other camera values
+      camera->Dolly(pow(1.01, analog_input[1]));	/* BS: why the use of pow()?  And why doesn't this use the forward_vector? */
+      camera->Elevation(  1.0*analog_input[3]);
+      camera->Azimuth(    1.0*analog_input[5]);
+      camera->Roll(       1.0*analog_input[4]);
+      }
+    }
+}
+

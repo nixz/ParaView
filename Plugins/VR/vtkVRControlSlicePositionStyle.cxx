@@ -1,7 +1,7 @@
 /*=========================================================================
 
    Program: ParaView
-   Module:    $RCSfile$
+   Module:    vtkVRControlSlicePositionStyle.cxx
 
    Copyright (c) 2005,2006 Sandia Corporation, Kitware Inc.
    All rights reserved.
@@ -34,27 +34,30 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkObjectFactory.h"
 #include "vtkPVXMLElement.h"
 #include "vtkSMProperty.h"
+#include "vtkSMPropertyHelper.h"
 #include "vtkSMProxy.h"
 #include "vtkSMDoubleVectorProperty.h"
 #include "vtkSMProxyManager.h"
 #include "vtkSMSessionProxyManager.h"
 #include "vtkSMProxyLocator.h"
+#include "vtkSMRenderViewProxy.h"
 #include "vtkVRQueue.h"
+#include "vtkNew.h"
+#include "vtkTransform.h"
+#include "vtkMatrix4x4.h"
+
+#include "pqView.h"
+#include "pqActiveObjects.h"
+
 #include <iostream>
 #include <sstream>
 #include <algorithm>
-#include "pqView.h"
-#include "pqActiveObjects.h"
-#include "vtkSMRenderViewProxy.h"
-#include "vtkSMPropertyHelper.h"
-#include "vtkTransform.h"
-#include "vtkMatrix4x4.h"
-#include "vtkNew.h"
 
 // ----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkVRControlSlicePositionStyle)
 
 // ----------------------------------------------------------------------------
+// Constructor method
 vtkVRControlSlicePositionStyle::vtkVRControlSlicePositionStyle()
 {
   this->Enabled = false;
@@ -64,6 +67,13 @@ vtkVRControlSlicePositionStyle::vtkVRControlSlicePositionStyle()
 }
 
 // ----------------------------------------------------------------------------
+// Destructor method
+vtkVRControlSlicePositionStyle::~vtkVRControlSlicePositionStyle()
+{
+}
+
+// ----------------------------------------------------------------------------
+// PrintSelf() method
 void vtkVRControlSlicePositionStyle::PrintSelf(ostream &os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
@@ -79,11 +89,8 @@ void vtkVRControlSlicePositionStyle::PrintSelf(ostream &os, vtkIndent indent)
 }
 
 // ----------------------------------------------------------------------------
-vtkVRControlSlicePositionStyle::~vtkVRControlSlicePositionStyle()
-{
-}
-
-// ----------------------------------------------------------------------------
+// Update() method
+// BS: what does this method do?  Okay, it returns a boolean that indicates what?
 bool vtkVRControlSlicePositionStyle::Update()
 {
   if (!this->ControlledProxy)
@@ -95,25 +102,27 @@ bool vtkVRControlSlicePositionStyle::Update()
 }
 
 // ----------------------------------------------------------------------------
-void vtkVRControlSlicePositionStyle::HandleButton(const vtkVREventData& data)
+// HandleButton() method
+void vtkVRControlSlicePositionStyle::HandleButton(const vtkVREvent& event)
 {
-  vtkStdString role = this->GetButtonRole(data.name);
+  vtkStdString role = this->GetButtonRole(event.name);
   if (role == "Grab slice")
     {
-    if (this->Enabled && data.data.button.state == 0)
+    if (this->Enabled && event.data.button.state == 0)
       {
       this->ControlledProxy->UpdateVTKObjects();
       this->InitialPositionRecorded = false;
       }
 
-    this->Enabled = data.data.button.state;
+    this->Enabled = event.data.button.state;
     }
 }
 
 // ----------------------------------------------------------------------------
-void vtkVRControlSlicePositionStyle::HandleTracker( const vtkVREventData& data )
+// HandleTracker() method
+void vtkVRControlSlicePositionStyle::HandleTracker(const vtkVREvent& event)
 {
-  vtkStdString role = this->GetTrackerRole(data.name);
+  vtkStdString role = this->GetTrackerRole(event.name);
   if (role != "Slice position")
     {
     return;
@@ -133,22 +142,21 @@ void vtkVRControlSlicePositionStyle::HandleTracker( const vtkVREventData& data )
     proxy = vtkSMRenderViewProxy::SafeDownCast(view->getViewProxy());
     if (proxy)
       {
-      prop = vtkSMDoubleVectorProperty::SafeDownCast(
-            proxy->GetProperty("ModelTransformMatrix"));
+      prop = vtkSMDoubleVectorProperty::SafeDownCast(proxy->GetProperty("ModelTransformMatrix"));
       if (prop)
         {
         if (!this->InitialPositionRecorded)
           {
           // Copy the data into matrix
           this->InitialInvertedPose->Identity();
-          this->InitialInvertedPose->SetElement(0, 3, data.data.tracker.matrix[3]);
-          this->InitialInvertedPose->SetElement(1, 3, data.data.tracker.matrix[7]);
-          this->InitialInvertedPose->SetElement(2, 3, data.data.tracker.matrix[11]);
+          this->InitialInvertedPose->SetElement(0, 3, event.data.tracker.matrix[3]);
+          this->InitialInvertedPose->SetElement(1, 3, event.data.tracker.matrix[7]);
+          this->InitialInvertedPose->SetElement(2, 3, event.data.tracker.matrix[11]);
 
-          // invert the matrix
+          // Invert the matrix
           this->InitialInvertedPose->Invert();
 
-      vtkSMPropertyHelper(this->ControlledProxy, this->ControlledPropertyName).Get(this->Origin,3);
+          vtkSMPropertyHelper(this->ControlledProxy, this->ControlledPropertyName).Get(this->Origin, 3);
 
           this->Origin[3] = 1;
           this->InitialPositionRecorded = true;
@@ -158,9 +166,9 @@ void vtkVRControlSlicePositionStyle::HandleTracker( const vtkVREventData& data )
           double origin[4];
           vtkNew<vtkMatrix4x4> transformMatrix;
           transformMatrix->Identity();
-          transformMatrix->SetElement(0, 3, data.data.tracker.matrix[3]);
-          transformMatrix->SetElement(1, 3, data.data.tracker.matrix[7]);
-          transformMatrix->SetElement(2, 3, data.data.tracker.matrix[11]);
+          transformMatrix->SetElement(0, 3, event.data.tracker.matrix[3]);
+          transformMatrix->SetElement(1, 3, event.data.tracker.matrix[7]);
+          transformMatrix->SetElement(2, 3, event.data.tracker.matrix[11]);
 
           vtkMatrix4x4::Multiply4x4(transformMatrix.GetPointer(),
                                     this->InitialInvertedPose.GetPointer(),
@@ -169,8 +177,7 @@ void vtkVRControlSlicePositionStyle::HandleTracker( const vtkVREventData& data )
           // Get the current model transform matrix to get the orientation
           double matrix[16];
           vtkNew<vtkMatrix4x4> modelTransformMatrix;
-          vtkSMPropertyHelper(proxy, "ModelTransformMatrix").Get(
-                matrix, 16);
+          vtkSMPropertyHelper(proxy, "ModelTransformMatrix").Get(matrix, 16);
           modelTransformMatrix->DeepCopy(matrix);
 
           // We need only the rotation component
@@ -190,8 +197,7 @@ void vtkVRControlSlicePositionStyle::HandleTracker( const vtkVREventData& data )
           origin[2] = transformedPoints[2] / transformedPoints[3];
           origin[3] = 1;
 
-          vtkSMPropertyHelper(this->ControlledProxy,
-                              this->ControlledPropertyName).Set(origin, 3);
+          vtkSMPropertyHelper(this->ControlledProxy, this->ControlledPropertyName).Set(origin, 3);
           //this->ControlledProxy->UpdateVTKObjects();
           }
         }

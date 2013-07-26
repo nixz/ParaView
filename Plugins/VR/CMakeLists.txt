@@ -30,8 +30,6 @@ if(PARAVIEW_USE_VRPN)
   if(UNIX AND NOT APPLE)
     find_path(VRPN_LIBUSB_INCLUDE_DIR libusb.h PATHS /usr/include /usr/local/include)
     if(NOT EXISTS VRPN_LIBUSB_INCLUDE_DIR)
-      # Not all platforms require this directory to be set
-      set(VRPN_LIBUSB_INCLUDE_DIR "")
       mark_as_advanced(CLEAR VRPN_LIBUSB_INCLUDE_DIR)
     endif()
   endif()
@@ -65,13 +63,13 @@ QT4_WRAP_CPP(MOC_SRCS
   pqVRStarter.h
   ${VRPN_MOC_SRC}
   ${VRUI_MOC_SRC}
-  vtkVRControlSliceOrientationStyle.h
-  vtkVRControlSlicePositionStyle.h
-  vtkVRGrabWorldStyle.h
+  vtkVRQueue.h
   vtkVRInteractorStyle.h
   vtkVRInteractorStyleFactory.h
-  vtkVRQueue.h
   vtkVRTrackStyle.h
+  vtkVRGrabWorldStyle.h
+  vtkVRControlSliceOrientationStyle.h
+  vtkVRControlSlicePositionStyle.h
   )
 
 QT4_WRAP_UI(UI_SRCS
@@ -89,13 +87,14 @@ SET( VR_SOURCE_FILES
   pqVRQueueHandler.cxx
   ${VRPN_SOURCE_FILES}
   ${VRUI_SOURCE_FILES}
-  vtkVRControlSliceOrientationStyle.cxx
-  vtkVRControlSlicePositionStyle.cxx
-  vtkVRGrabWorldStyle.cxx
+  vtkVRQueue.cxx
   vtkVRInteractorStyle.cxx
   vtkVRInteractorStyleFactory.cxx
-  vtkVRQueue.cxx
+  vtkVRSkeletonStyle.cxx
   vtkVRTrackStyle.cxx
+  vtkVRGrabWorldStyle.cxx
+  vtkVRControlSliceOrientationStyle.cxx
+  vtkVRControlSlicePositionStyle.cxx
   vtkVRSpaceNavigatorGrabWorldStyle.cxx
   ${MOC_SRCS})
 

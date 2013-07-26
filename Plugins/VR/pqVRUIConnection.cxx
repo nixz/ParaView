@@ -31,32 +31,33 @@
   ========================================================================*/
 #include "pqVRUIConnection.h"
 
-#include "vtkMath.h"
-#include "pqActiveObjects.h"
-#include "pqView.h"
-#include <pqDataRepresentation.h>
+#include "vtkObjectFactory.h"
+#include "vtkPVXMLElement.h"
 #include "vtkSMRenderViewProxy.h"
 #include "vtkSMDoubleVectorProperty.h"
 #include "vtkSMRepresentationProxy.h"
 #include "vtkSMPropertyHelper.h"
-#include <vtkCamera.h>
-#include <vtkRenderer.h>
-#include <vtkRenderWindow.h>
-#include "vtkObjectFactory.h"
-#include "vtkPVXMLElement.h"
 #include "vtkMath.h"
 #include "vtkMatrix4x4.h"
 #include "vtkTransform.h"
+
 #include "vtkVRUIPipe.h"
 #include "vtkVRUIServerState.h"
 #include "vtkVRUITrackerState.h"
+
+#include "pqActiveObjects.h"
+#include "pqView.h"
+#include "pqDataRepresentation.h"
+
 #include <QDateTime>
 #include <QDebug>
 #include <QMutex>
+
 #include <vector>
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+
 #ifdef QTSOCK
 #include <QTcpSocket>
 #else
@@ -83,9 +84,9 @@ public:
     this->Pipe=0;
     this->State=0;
     this->StateMutex=0;
-    this->Streaming=false;           // streaming
-    //  this->PacketSignalCond=0;        // for streaming
-    //   this->PacketSignalCondMutex=0; // for streaming
+    this->Streaming=false;             // streaming
+    //  this->PacketSignalCond=0;      // for streaming
+    //  this->PacketSignalCondMutex=0; // for streaming
   }
 
   // --------------------------------------------------------------------------
@@ -115,7 +116,7 @@ public:
   // QMutex *PacketSignalCondMutex;    // for streaming
 
   // --------------------------------------------------------------------------
-  void initSocket(std::string address,  std::string port)
+  void initSocket(std::string address, std::string port)
   {
 #ifdef QTSOCK
     this->Socket=new QTcpSocket;
@@ -128,7 +129,7 @@ public:
                                 QString( port.c_str() ).toInt() ); // ReadWrite?
 #else
     struct sockaddr_in      client_addr;
-    struct  hostent         *hp;
+    struct hostent         *host;
 
     this->Socket = socket(AF_INET, SOCK_STREAM, 0);
     if (this->Socket < 0) {
@@ -139,15 +140,15 @@ public:
     }
 
     /* Name socket using file system name */
-    hp = gethostbyname(address.c_str());
-    if (hp == 0) {
-    fprintf(stderr, "%s: unknown host\n", address.c_str());
-    return;
+    host = gethostbyname(address.c_str());
+    if (host == 0) {
+      fprintf(stderr, "%s: unknown host\n", address.c_str());
+      return;
     }
-    bcopy(hp->h_addr, &client_addr.sin_addr, hp->h_length);
+    bcopy(host->h_addr, &client_addr.sin_addr, host->h_length);
 
     client_addr.sin_family = AF_INET;
-    client_addr.sin_port = htons(( uint16_t )atoi(port.c_str()));
+    client_addr.sin_port = htons((uint16_t)atoi(port.c_str()));
 
     if (::connect(this->Socket, (struct sockaddr *)&client_addr, sizeof(struct sockaddr_in)) < 0) { /* TODO: why is this "sockaddr", when the type is "sockaddr_in" ?? */
     close(this->Socket);
@@ -170,14 +171,17 @@ public:
     std::cout<< "Trying to connect" <<std::endl;
 #endif
     this->Pipe->Send(vtkVRUIPipe::CONNECT_REQUEST);
-    if(!this->Pipe->WaitForServerReply(30000)) // 30s
+    if (this->Pipe->protocol > 0) {
+       this->Pipe->Send(this->Pipe->protocol);
+    }
+    if (!this->Pipe->WaitForServerReply(30000)) // 30s
       {
       cerr << "Timeout while waiting for CONNECT_REPLY" << endl;
       delete this->Pipe;
       this->Pipe=0;
       return false;
       }
-    if(this->Pipe->Receive()!=vtkVRUIPipe::CONNECT_REPLY)
+    if (this->Pipe->Receive()!=vtkVRUIPipe::CONNECT_REPLY)
       {
       cerr << "Mismatching message while waiting for CONNECT_REPLY" << endl;
       delete this->Pipe;
@@ -193,7 +197,7 @@ public:
   // --------------------------------------------------------------------------
   void activate()
   {
-    if(!this->Active)
+    if (!this->Active)
       {
       this->Pipe->Send(vtkVRUIPipe::ACTIVATE_REQUEST);
       this->Active=true;
@@ -203,7 +207,7 @@ public:
   // --------------------------------------------------------------------------
   void deactivate()
   {
-    if(this->Active)
+    if (this->Active)
       {
       this->Active=false;
       this->Pipe->Send(vtkVRUIPipe::DEACTIVATE_REQUEST);
@@ -213,7 +217,7 @@ public:
   // --------------------------------------------------------------------------
   void startStream()
   {
-    if(this->Active)
+    if (this->Active)
       {
 #ifdef VRUI_ENABLE_DEBUG
       std::cout<<"start streaming" <<std::endl;
@@ -226,7 +230,7 @@ public:
   // --------------------------------------------------------------------------
   void stopStream()
   {
-    if(this->Streaming)
+    if (this->Streaming)
       {
       this->Streaming=false;
       this->Pipe->Send(vtkVRUIPipe::STOPSTREAM_REQUEST);
@@ -317,7 +321,7 @@ void pqVRUIConnection::addAnalog(std::string id, std::string name )
 }
 
 // ----------------------------------------------------------------------------
-void pqVRUIConnection::addTracking( std::string id, std::string name)
+void pqVRUIConnection::addTracking(std::string id, std::string name)
 {
   std::stringstream returnStr;
   returnStr << "tracker." << id;
@@ -349,7 +353,7 @@ bool pqVRUIConnection::init()
   // Initialize the socket connetion;
   this->Internals->initSocket(this->Address, this->Port);
   this->Internals->initPipe();
-  if ( !this->Internals->connect() ) return false;
+  if (!this->Internals->connect()) return false;
   this->Internals->activate();
   //this->Internals->startStream();
   this->Initialized=true;
@@ -359,11 +363,11 @@ bool pqVRUIConnection::init()
 // ----------------------------------------------------------------------------
 void pqVRUIConnection::run()
 {
-  while ( !this->_Stop )
+  while (!this->_Stop)
     {
     if(this->Initialized)
       {
-      if ( this->Internals->Streaming )
+      if (this->Internals->Streaming)
         {
         this->Internals->readStream();
         }
@@ -387,32 +391,32 @@ void pqVRUIConnection::stop()
 
 
 // ----------------------------------------------------------------------------
-std::string pqVRUIConnection::name( int eventType, int id )
+std::string pqVRUIConnection::name(int eventType, int id)
 {
   std::stringstream returnStr,connection,e;
-  if(this->Name.size())
+  if (this->Name.size())
     returnStr << this->Name << ".";
   else
     returnStr << this->Address << ".";
-  switch (eventType )
+  switch (eventType)
     {
     case ANALOG_EVENT:
       e << "analog." << id;
-      if( this->AnalogMapping.find( e.str())!= this->AnalogMapping.end())
+      if (this->AnalogMapping.find( e.str())!= this->AnalogMapping.end())
         returnStr << this->AnalogMapping[e.str()];
       else
         returnStr << e.str();
       break;
     case BUTTON_EVENT:
       e << "button." << id;
-      if( this->ButtonMapping.find( e.str())!= this->ButtonMapping.end())
+      if (this->ButtonMapping.find( e.str())!= this->ButtonMapping.end())
         returnStr << this->ButtonMapping[e.str()];
       else
         returnStr << e.str();
       break;
     case TRACKER_EVENT:
       e << "tracker."<< id;
-      if( this->TrackerMapping.find( e.str())!=this->TrackerMapping.end())
+      if (this->TrackerMapping.find( e.str())!=this->TrackerMapping.end())
         returnStr << this->TrackerMapping[e.str()];
       else
         returnStr << e.str();
@@ -422,14 +426,13 @@ std::string pqVRUIConnection::name( int eventType, int id )
 }
 
 // ----------------------------------------------------------------------------
-void pqVRUIConnection::verifyConfig( const char* id,
-                                      const char* name )
+void pqVRUIConnection::verifyConfig(const char* id, const char* name)
 {
-  if ( !id )
+  if (!id)
     {
     qWarning() << "\"id\" should be specified";
     }
-  if ( !name )
+  if (!name)
     {
     qWarning() << "\"name\" should be specified";
     }
@@ -441,30 +444,30 @@ bool pqVRUIConnection::configure(vtkPVXMLElement* child, vtkSMProxyLocator*)
   bool returnVal = false;
   if (child->GetName() && strcmp(child->GetName(),"VRUIConnection") == 0 )
     {
-    for ( unsigned cc=0; cc < child->GetNumberOfNestedElements();++cc )
+    for (unsigned cc=0; cc < child->GetNumberOfNestedElements(); ++cc)
       {
       vtkPVXMLElement* e = child->GetNestedElement(cc);
-      if ( e && e->GetName() )
+      if (e && e->GetName())
         {
-        const char* id = e->GetAttributeOrEmpty( "id" );
-        const char* name = e->GetAttributeOrEmpty( "name" );
+        const char* id = e->GetAttributeOrEmpty("id");
+        const char* name = e->GetAttributeOrEmpty("name");
         this->verifyConfig(id, name);
 
-        if ( strcmp( e->GetName(), "Button" )==0 )
+        if (strcmp(e->GetName(), "Button") == 0)
           {
-          this->addButton( id, name );
+          this->addButton(id, name);
           }
-        else if ( strcmp( e->GetName(), "Analog" )==0 )
+        else if (strcmp(e->GetName(), "Analog") == 0)
           {
-          this->addAnalog( id, name );
+          this->addAnalog(id, name);
           }
-        else if ( strcmp ( e->GetName(),  "Tracker" ) ==0 )
+        else if (strcmp (e->GetName(), "Tracker") == 0)
           {
-          this->addTracking( id, name );
+          this->addTracking( id, name);
           }
-        else if ( strcmp ( e->GetName(),  "TrackerTransform" ) ==0 )
+        else if (strcmp (e->GetName(), "TrackerTransform") == 0)
           {
-          this->configureTransform( e );
+          this->configureTransform( e);
           }
 
         else
@@ -479,13 +482,13 @@ bool pqVRUIConnection::configure(vtkPVXMLElement* child, vtkSMProxyLocator*)
 }
 
 // ----------------------------------------------------------------------------
-void pqVRUIConnection::configureTransform( vtkPVXMLElement* child )
+void pqVRUIConnection::configureTransform(vtkPVXMLElement* child)
 {
-  if (child->GetName() && strcmp( child->GetName(), "TrackerTransform" )==0 )
+  if (child->GetName() && strcmp(child->GetName(), "TrackerTransform") == 0)
     {
     child->GetVectorAttribute( "value",
                                16,
-                               ( double* ) this->Transformation->Element );
+                               (double*)this->Transformation->Element);
     this->TrackerTransformPresent = true;
     }
 }
@@ -495,21 +498,21 @@ vtkPVXMLElement* pqVRUIConnection::saveConfiguration() const
 {
   vtkPVXMLElement* child = vtkPVXMLElement::New();
   child->SetName("VRUIConnection");
-  child->AddAttribute( "name", this->Name.c_str() );
-  child->AddAttribute( "address",  this->Address.c_str() );
-  child->AddAttribute( "port", this->Port.c_str() );
-  saveButtonEventConfig( child );
-  saveAnalogEventConfig( child );
-  saveTrackerEventConfig( child );
-  saveTrackerTransformationConfig( child );
+  child->AddAttribute("name", this->Name.c_str());
+  child->AddAttribute("address", this->Address.c_str());
+  child->AddAttribute("port", this->Port.c_str());
+  saveButtonEventConfig(child);
+  saveAnalogEventConfig(child);
+  saveTrackerEventConfig(child);
+  saveTrackerTransformationConfig(child);
   return child;
 }
 
 // ----------------------------------------------------------------------------
-void pqVRUIConnection::saveButtonEventConfig( vtkPVXMLElement* child )const
+void pqVRUIConnection::saveButtonEventConfig(vtkPVXMLElement* child) const
 {
-  if(!this->ButtonPresent) return;
-  for ( std::map<std::string,std::string>::const_iterator it = this->ButtonMapping.begin();
+  if (!this->ButtonPresent) return;
+  for (std::map<std::string,std::string>::const_iterator it = this->ButtonMapping.begin();
         it!=this->ButtonMapping.end();
         ++it )
     {
@@ -525,10 +528,10 @@ void pqVRUIConnection::saveButtonEventConfig( vtkPVXMLElement* child )const
       token.push_back(word);
       }
     vtkPVXMLElement* e = vtkPVXMLElement::New();
-    if ( strcmp( token[0].c_str(), "button" )==0 )
+    if (strcmp(token[0].c_str(), "button") == 0)
       {
       e->SetName("Button");
-      e->AddAttribute("id", token[1].c_str() );
+      e->AddAttribute("id", token[1].c_str());
       e->AddAttribute("name",value.c_str());
       }
     child->AddNestedElement(e);
@@ -537,9 +540,9 @@ void pqVRUIConnection::saveButtonEventConfig( vtkPVXMLElement* child )const
 }
 
 // ----------------------------------------------------------------------------
-void pqVRUIConnection::saveAnalogEventConfig( vtkPVXMLElement* child ) const
+void pqVRUIConnection::saveAnalogEventConfig(vtkPVXMLElement* child) const
 {
-  if(!this->AnalogPresent) return;
+  if (!this->AnalogPresent) return;
   for ( std::map<std::string,std::string>::const_iterator it = this->AnalogMapping.begin();
         it!=this->AnalogMapping.end();
         ++it )
@@ -556,10 +559,10 @@ void pqVRUIConnection::saveAnalogEventConfig( vtkPVXMLElement* child ) const
       token.push_back(word);
       }
     vtkPVXMLElement* e = vtkPVXMLElement::New();
-    if ( strcmp( token[0].c_str(), "analog" )==0 )
+    if (strcmp( token[0].c_str(), "analog") == 0)
       {
       e->SetName("Analog");
-      e->AddAttribute("id", token[1].c_str() );
+      e->AddAttribute("id", token[1].c_str());
       e->AddAttribute("name",value.c_str());
       }
     child->AddNestedElement(e);
@@ -568,10 +571,10 @@ void pqVRUIConnection::saveAnalogEventConfig( vtkPVXMLElement* child ) const
 }
 
 // ----------------------------------------------------------------------------
-void pqVRUIConnection::saveTrackerEventConfig( vtkPVXMLElement* child ) const
+void pqVRUIConnection::saveTrackerEventConfig(vtkPVXMLElement* child) const
 {
   if(!this->TrackerPresent) return;
-  for ( std::map<std::string,std::string>::const_iterator it = this->TrackerMapping.begin();
+  for (std::map<std::string,std::string>::const_iterator it = this->TrackerMapping.begin();
         it!=this->TrackerMapping.end();
         ++it )
     {
@@ -587,10 +590,10 @@ void pqVRUIConnection::saveTrackerEventConfig( vtkPVXMLElement* child ) const
       token.push_back(word);
       }
     vtkPVXMLElement* e = vtkPVXMLElement::New();
-    if ( strcmp( token[0].c_str(), "tracker" )==0 )
+    if (strcmp( token[0].c_str(), "tracker" )==0 )
       {
       e->SetName("Tracker");
-      e->AddAttribute("id", token[1].c_str() );
+      e->AddAttribute("id", token[1].c_str());
       e->AddAttribute("name",value.c_str());
       }
     child->AddNestedElement(e);
@@ -599,7 +602,7 @@ void pqVRUIConnection::saveTrackerEventConfig( vtkPVXMLElement* child ) const
 }
 
 // ----------------------------------------------------------------------------
-void pqVRUIConnection::saveTrackerTransformationConfig( vtkPVXMLElement* child ) const
+void pqVRUIConnection::saveTrackerTransformationConfig(vtkPVXMLElement* child) const
 {
   if(!this->TrackerTransformPresent) return;
   vtkPVXMLElement* transformationMatrix = vtkPVXMLElement::New();
@@ -607,21 +610,21 @@ void pqVRUIConnection::saveTrackerTransformationConfig( vtkPVXMLElement* child )
   std::stringstream matrix;
   for (int i = 0; i < 16; ++i)
     {
-    matrix <<  double( *( ( double* )this->Transformation->Element +i ) ) << " ";
+    matrix <<  double(*((double*)this->Transformation->Element + i)) << " ";
     }
-  transformationMatrix->AddAttribute( "value",  matrix.str().c_str() );
+  transformationMatrix->AddAttribute("value",  matrix.str().c_str());
   child->AddNestedElement(transformationMatrix);
   transformationMatrix->FastDelete();
 }
 
 // ----------------------------------------------------------------------------
-void pqVRUIConnection::setTransformation( vtkMatrix4x4* matrix )
+void pqVRUIConnection::setTransformation(vtkMatrix4x4* matrix)
 {
   for (int i = 0; i < 4; ++i)
     {
     for (int j = 0; j < 4; ++j)
       {
-      this->Transformation->SetElement(i,j, matrix->GetElement( i,j ) );
+      this->Transformation->SetElement(i,j, matrix->GetElement(i, j));
       }
     }
   this->TrackerTransformPresent = true;
@@ -690,41 +693,41 @@ void pqVRUIConnection::getNextPacket()
 // ----------------------------------------------------------------------------
 void pqVRUIConnection::newAnalogValue(std::vector<float> *data)
 {
-  vtkVREventData temp;
-  temp.connId = this->Address;
-  temp.name = name( ANALOG_EVENT);
-  temp.eventType = ANALOG_EVENT;
-  temp.timeStamp =   QDateTime::currentDateTime().toTime_t();
-  temp.data.analog.num_channel = ( int )( *data ).size();
-  for ( unsigned int i=0 ; i<( *data ).size() ;++i )
+  vtkVREvent event;
+  event.connId = this->Address;
+  event.name = name( ANALOG_EVENT);
+  event.eventType = ANALOG_EVENT;
+  event.timeStamp = QDateTime::currentDateTime().toTime_t();
+  event.data.analog.num_channels = (int)(*data).size();
+  for (unsigned int i=0; i < (*data).size(); ++i)
     {
-    temp.data.analog.channel[i] = ( *data )[i];
+    event.data.analog.channel[i] = (*data)[i];
     }
-  this->EventQueue->Enqueue( temp );
+  this->EventQueue->Enqueue(event);
 }
 
 // ----------------------------------------------------------------------------
 void pqVRUIConnection::newButtonValue(int state,  int button)
 {
-  vtkVREventData temp;
-  temp.connId = this->Address;
-  temp.name = this->name( BUTTON_EVENT, button );
-  temp.eventType = BUTTON_EVENT;
-  temp.timeStamp =   QDateTime::currentDateTime().toTime_t();
-  temp.data.button.button = button;
-  temp.data.button.state = state;
-  this->EventQueue->Enqueue( temp );
+  vtkVREvent event;
+  event.connId = this->Address;
+  event.name = this->name(BUTTON_EVENT, button);
+  event.eventType = BUTTON_EVENT;
+  event.timeStamp = QDateTime::currentDateTime().toTime_t();
+  event.data.button.button = button;
+  event.data.button.state = state;
+  this->EventQueue->Enqueue(event);
 }
 
 // ----------------------------------------------------------------------------
 void pqVRUIConnection::newTrackerValue(vtkSmartPointer<vtkVRUITrackerState> data, int sensor)
 {
-  vtkVREventData temp;
-  temp.connId = this->Address;
-  temp.name = name( TRACKER_EVENT, sensor );
-  temp.eventType = TRACKER_EVENT;
-  temp.timeStamp =   QDateTime::currentDateTime().toTime_t();
-  temp.data.tracker.sensor = sensor;
+  vtkVREvent event;
+  event.connId = this->Address;
+  event.name = name(TRACKER_EVENT, sensor);
+  event.eventType = TRACKER_EVENT;
+  event.timeStamp = QDateTime::currentDateTime().toTime_t();
+  event.data.tracker.sensor = sensor;
   float rotMatrix[3][3];
   float pos[3];
   float q[4];
@@ -740,7 +743,7 @@ void pqVRUIConnection::newTrackerValue(vtkSmartPointer<vtkVRUITrackerState> data
   // FreeVR VRUI Daemon is giving us (i,j,k, real)
   float vtkQuat[4] = {q[3], q[0], q[1], q[2]};
 
-  vtkMath::QuaternionToMatrix3x3(&vtkQuat[0], rotMatrix );
+  vtkMath::QuaternionToMatrix3x3(&vtkQuat[0], rotMatrix);
 
 
   this->Matrix->Element[0][0] = rotMatrix[0][0];
@@ -769,7 +772,7 @@ void pqVRUIConnection::newTrackerValue(vtkSmartPointer<vtkVRUITrackerState> data
   if(sensor)
   {
     std::cout << "Pre multiplication matrix: " << std::endl;
-    this->Matrix->PrintSelf( cout, vtkIndent(0) );
+    this->Matrix->PrintSelf(cout, vtkIndent(0));
   }
 #endif
 
@@ -794,55 +797,55 @@ void pqVRUIConnection::newTrackerValue(vtkSmartPointer<vtkVRUITrackerState> data
   this->ZUpToYUpMatrix->Element[2][3] = 0.0;
   this->ZUpToYUpMatrix->Element[3][3] = 1.0;
 
-  vtkMatrix4x4::Multiply4x4( this->ZUpToYUpMatrix, this->Matrix, this->Matrix );
+  vtkMatrix4x4::Multiply4x4(this->ZUpToYUpMatrix, this->Matrix, this->Matrix);
 
-#if defined( VRUI_ENABLE_DEBUG ) || 0
-  if(sensor)
+#if defined(VRUI_ENABLE_DEBUG) || 0
+  if (sensor)
     {
     std::cout << "Post multiplication matrix: " << std::endl;
-    this->Matrix->PrintSelf( cout, vtkIndent(0) );
+    this->Matrix->PrintSelf(cout, vtkIndent(0));
     }
 #endif
 
 
-#if defined( VRUI_ENABLE_DEBUG ) || 0
-  if(sensor)
+#if defined(VRUI_ENABLE_DEBUG) || 0
+  if (sensor)
     cout << "post pos=("
          << this->Matrix->Element[0][3] << ","
          << this->Matrix->Element[1][3] << ","
          << this->Matrix->Element[2][3] << ")" << endl;
 #endif
 
-  temp.data.tracker.matrix[0] = this->Matrix->Element[0][0];
-  temp.data.tracker.matrix[1] = this->Matrix->Element[0][1];
-  temp.data.tracker.matrix[2] = this->Matrix->Element[0][2];
-  temp.data.tracker.matrix[3] = this->Matrix->Element[0][3];
+  event.data.tracker.matrix[0] = this->Matrix->Element[0][0];
+  event.data.tracker.matrix[1] = this->Matrix->Element[0][1];
+  event.data.tracker.matrix[2] = this->Matrix->Element[0][2];
+  event.data.tracker.matrix[3] = this->Matrix->Element[0][3];
 
-  temp.data.tracker.matrix[4] = this->Matrix->Element[1][0];
-  temp.data.tracker.matrix[5] = this->Matrix->Element[1][1];
-  temp.data.tracker.matrix[6] = this->Matrix->Element[1][2];
-  temp.data.tracker.matrix[7] = this->Matrix->Element[1][3];
+  event.data.tracker.matrix[4] = this->Matrix->Element[1][0];
+  event.data.tracker.matrix[5] = this->Matrix->Element[1][1];
+  event.data.tracker.matrix[6] = this->Matrix->Element[1][2];
+  event.data.tracker.matrix[7] = this->Matrix->Element[1][3];
 
-  temp.data.tracker.matrix[8] = this->Matrix->Element[2][0];
-  temp.data.tracker.matrix[9] = this->Matrix->Element[2][1];
-  temp.data.tracker.matrix[10] = this->Matrix->Element[2][2];
-  temp.data.tracker.matrix[11] = this->Matrix->Element[2][3];
+  event.data.tracker.matrix[8] = this->Matrix->Element[2][0];
+  event.data.tracker.matrix[9] = this->Matrix->Element[2][1];
+  event.data.tracker.matrix[10] = this->Matrix->Element[2][2];
+  event.data.tracker.matrix[11] = this->Matrix->Element[2][3];
 
-  temp.data.tracker.matrix[12] = this->Matrix->Element[3][0];
-  temp.data.tracker.matrix[13] = this->Matrix->Element[3][1];
-  temp.data.tracker.matrix[14] = this->Matrix->Element[3][2];
-  temp.data.tracker.matrix[15] = this->Matrix->Element[3][3];
+  event.data.tracker.matrix[12] = this->Matrix->Element[3][0];
+  event.data.tracker.matrix[13] = this->Matrix->Element[3][1];
+  event.data.tracker.matrix[14] = this->Matrix->Element[3][2];
+  event.data.tracker.matrix[15] = this->Matrix->Element[3][3];
 
-  this->EventQueue->Enqueue( temp );
+  this->EventQueue->Enqueue(event);
 }
 
 // ----------------------------------------------------------------------------
 void pqVRUIConnection::getAndEnqueueButtonData()
 {
   std::vector<bool> *buttons=this->Internals->State->GetButtonStates();
-  for (unsigned int i = 0; i < ( *buttons ).size(); ++i)
+  for (unsigned int i = 0; i < (*buttons).size(); ++i)
     {
-    newButtonValue( ( *buttons )[i], i );
+    newButtonValue((*buttons)[i], i);
     }
 }
 
@@ -850,7 +853,7 @@ void pqVRUIConnection::getAndEnqueueButtonData()
 void pqVRUIConnection::getAndEnqueueAnalogData()
 {
   std::vector<float> *analog=this->Internals->State->GetValuatorStates();
-  newAnalogValue( analog );
+  newAnalogValue(analog);
 }
 
 // ----------------------------------------------------------------------------
@@ -859,9 +862,9 @@ void pqVRUIConnection::getAndEnqueueTrackerData()
   std::vector<vtkSmartPointer<vtkVRUITrackerState> > *trackers=
     this->Internals->State->GetTrackerStates();
 
-  for (unsigned int i = 0; i < ( *trackers ).size(); ++i)
+  for (unsigned int i = 0; i < (*trackers).size(); ++i)
     {
-    newTrackerValue( (*trackers )[i] , i);
+    newTrackerValue((*trackers)[i], i);
     }
 }
 

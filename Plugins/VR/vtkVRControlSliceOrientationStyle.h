@@ -56,8 +56,8 @@ protected:
   vtkVRControlSliceOrientationStyle();
   ~vtkVRControlSliceOrientationStyle();
 
-  void HandleButton(const vtkVREventData& data);
-  void HandleTracker(const vtkVREventData& data);
+  void HandleButton(const vtkVREvent& event);
+  void HandleTracker(const vtkVREvent& event);
 
   bool Enabled;
   bool InitialOrientationRecorded;
@@ -70,9 +70,8 @@ protected:
   vtkNew<vtkMatrix4x4> InitialInvertedPose;
 
 private:
-  // Not implemented:
-  vtkVRControlSliceOrientationStyle(const vtkVRControlSliceOrientationStyle&);
-  void operator=(const vtkVRControlSliceOrientationStyle&);
+  vtkVRControlSliceOrientationStyle(const vtkVRControlSliceOrientationStyle&); // Not implemented
+  void operator=(const vtkVRControlSliceOrientationStyle&); // Not implemented
 };
 
 #endif

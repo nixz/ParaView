@@ -47,20 +47,20 @@ class vtkMutexLock;
 
 struct vtkTracker
 {
-  long   sensor;		// Which sensor is reporting
-  double matrix[16];		// The matrix with transformations applied
+  long   sensor;		          // Which sensor is reporting
+  double matrix[16];		          // The matrix with transformations applied
 };
 
 struct vtkAnalog
 {
-  int	 num_channel;		    // how many channels
-  double channel[VTK_ANALOG_CHANNEL_MAX]; // channel diliever analog values
+  int	 num_channels;		          // Number of analog channels
+  double channel[VTK_ANALOG_CHANNEL_MAX]; // Array of analog values
 };
 
 struct vtkButton
 {
-  int button;			// Which button (numbered from zero)
-  int state;			// New state (0 = off, 1 = on)
+  int button;			          // Which button (numbered from zero)
+  int state;			          // New state (0 = off, 1 = on)
 };
 
 union vtkVREventCommonData
@@ -70,10 +70,10 @@ union vtkVREventCommonData
   vtkButton button;
 };
 
-struct vtkVREventData
+struct vtkVREvent
 {
   std::string connId;
-  std::string name;		// Specified from configuration
+  std::string name;		          // Specified from configuration
   unsigned int eventType;
   vtkVREventCommonData data;
   unsigned int timeStamp;
@@ -87,11 +87,11 @@ public:
   vtkTypeMacro(vtkVRQueue, vtkObject)
   void PrintSelf(ostream &os, vtkIndent indent);
 
-  void Enqueue (const vtkVREventData& data);
+  void Enqueue (const vtkVREvent& event);
   bool IsEmpty() const;
-  bool TryDequeue(vtkVREventData& data);
-  bool TryDequeue(std::queue<vtkVREventData>& data);
-  void Dequeue(vtkVREventData&  data) ;
+  bool TryDequeue(vtkVREvent& event);
+  bool TryDequeue(std::queue<vtkVREvent>& event);
+  void Dequeue(vtkVREvent& event) ;
 
 protected:
   vtkVRQueue();
@@ -101,7 +101,7 @@ private:
   vtkVRQueue(const vtkVRQueue&); // Not implemented.
   void operator=(const vtkVRQueue&); // Not implemented.
 
-  std::queue<vtkVREventData> Queue;
+  std::queue<vtkVREvent> Queue;
   mutable vtkNew<vtkMutexLock> Mutex;
   vtkNew<vtkConditionVariable> CondVar;
 

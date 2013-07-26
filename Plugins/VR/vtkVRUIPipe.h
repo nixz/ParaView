@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef vtkVRUIPipe_h
 #define vtkVRUIPipe_h
 #include <string>
+#include <stdint.h>		/* for uint32_t declaration */
 #ifdef QTSOCK
 class QTcpSocket;
 #endif
@@ -71,8 +72,9 @@ public:
   ~vtkVRUIPipe();
 
   // Description:
-  // Send a VRUI protocol message.
-  void Send(MessageTag m);
+  // Send a message to VRUI server.
+  void Send(MessageTag m);	// Used for signalling the VRDeviceDaemon with a message
+  void Send(uint32_t value);	// Used for sending a protocol value
 
   // Description:
   // Wait for server's reply (with a msecs milliseconds timeout).
@@ -114,11 +116,13 @@ public:
       }
   }
 
+  int	protocol;	/* which VRUI protocol to use */
+
 protected:
 #ifdef QTSOCK
   QTcpSocket *Socket;
 #else
-  int	Socket;	/* socket file descriptor */
+  int	Socket;		/* socket file descriptor */
 #endif
 
 private:

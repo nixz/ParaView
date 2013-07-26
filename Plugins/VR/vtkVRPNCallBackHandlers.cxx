@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkVRPNCallBackHandlers.cxx
+  Module:      vtkVRPNCallBackHandlers.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -19,38 +19,39 @@
 #include <vrpn_Analog.h>
 #include <vrpn_Dial.h>
 #include <vrpn_Text.h>
-#include "vtkMath.h"
-#include "pqActiveObjects.h"
-#include "pqView.h"
-#include <pqDataRepresentation.h>
-#include "vtkSMRenderViewProxy.h"
-#include "vtkSMDoubleVectorProperty.h"
-#include "vtkSMRepresentationProxy.h"
+
 #include "vtkSMPropertyHelper.h"
+
+#include "pqView.h"
+#include "pqActiveObjects.h"
 #include "pqVRPNConnection.h"
+
+#if 0
 #include <vtkCamera.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
+#endif
+
 #include <vector>
 #include <iostream>
 
 // ----------------------------------------------------------------------------
 void VRPN_CALLBACK handleAnalogChange(void* userdata, const vrpn_ANALOGCB b)
 {
-  pqVRPNConnection *self = static_cast<pqVRPNConnection*> ( userdata );
-  self->newAnalogValue( b );
+  pqVRPNConnection *self = static_cast<pqVRPNConnection*> (userdata);
+  self->newAnalogValue(b);
 }
 
 // ----------------------------------------------------------------------------
 void VRPN_CALLBACK handleButtonChange(void* userdata, vrpn_BUTTONCB b)
 {
-  pqVRPNConnection *self = static_cast<pqVRPNConnection*> ( userdata );
-  self->newButtonValue( b );
+  pqVRPNConnection *self = static_cast<pqVRPNConnection*> (userdata);
+  self->newButtonValue(b);
 }
 
 // ----------------------------------------------------------------------------
 void VRPN_CALLBACK handleTrackerChange(void *userdata, const vrpn_TRACKERCB t)
 {
-  pqVRPNConnection *self = static_cast<pqVRPNConnection*> ( userdata );
-  self->newTrackerValue( t );
+  pqVRPNConnection *self = static_cast<pqVRPNConnection*> (userdata);
+  self->newTrackerValue(t);
 }

@@ -82,7 +82,7 @@ protected:
   static void SetInstance(vtkVRInteractorStyleFactory *);
   static vtkVRInteractorStyleFactory *Instance;
 
-  std::vector<std::string> InteractorStyleClassNames;	// store the name of each Interactor class
+  std::vector<std::string> InteractorStyleClassNames;   // store the name of each Interactor class
   std::vector<std::string> InteractorStyleDescriptions; // store a short description of each Interactor
   std::vector<std::string> InteractorStyleNewMethods;   // store the New() method of each Interactor
 

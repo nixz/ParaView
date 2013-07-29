@@ -52,13 +52,13 @@ vtkVRUIPipe::vtkVRUIPipe(QTcpSocket *socket)
 {
   assert("pre: socket_exist" && socket != 0);
   this->Socket=socket;
-  this->protocol = 0;		/* NOTE: this is where the VRUI protocol is specified */
+  this->protocol = 0;           /* NOTE: this is where the VRUI protocol is specified */
 }
 #else
 vtkVRUIPipe::vtkVRUIPipe(int socket)
 {
   this->Socket=socket;
-  this->protocol = 0;		/* NOTE: this is where the VRUI protocol is specified */
+  this->protocol = 0;           /* NOTE: this is where the VRUI protocol is specified */
 }
 #endif
 
@@ -146,8 +146,8 @@ void vtkVRUIPipe::ReadLayout(vtkVRUIServerState *state)
 {
   assert("pre: state_exists" && state!=0);
 
-  uint32_t value;	/* Generic 4-byte "value" returned by VRUI VRDeviceDaemon */
-  ssize_t bytes;	/* The number of bytes returned from a socket read */
+  uint32_t value;       /* Generic 4-byte "value" returned by VRUI VRDeviceDaemon */
+  ssize_t bytes;        /* The number of bytes returned from a socket read */
 
   cout << "Internally defined protocol is " << this->protocol << endl;
   /* Read the protocol value */

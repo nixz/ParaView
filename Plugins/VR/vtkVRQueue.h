@@ -47,20 +47,20 @@ class vtkMutexLock;
 
 struct vtkTracker
 {
-  long   sensor;		          // Which sensor is reporting
-  double matrix[16];		          // The matrix with transformations applied
+  long   sensor;                                // Which sensor is reporting
+  double matrix[16];                            // The matrix with transformations applied
 };
 
 struct vtkAnalog
 {
-  int	 num_channels;		          // Number of analog channels
-  double channel[VTK_ANALOG_CHANNEL_MAX]; // Array of analog values
+  int         num_channels;                     // Number of analog channels
+  double channel[VTK_ANALOG_CHANNEL_MAX];       // Array of analog values
 };
 
 struct vtkButton
 {
-  int button;			          // Which button (numbered from zero)
-  int state;			          // New state (0 = off, 1 = on)
+  int button;                                   // Which button (numbered from zero)
+  int state;                                    // New state (0 = off, 1 = on)
 };
 
 union vtkVREventCommonData
@@ -73,7 +73,7 @@ union vtkVREventCommonData
 struct vtkVREvent
 {
   std::string connId;
-  std::string name;		          // Specified from configuration
+  std::string name;                                 // Specified from configuration
   unsigned int eventType;
   vtkVREventCommonData data;
   unsigned int timeStamp;

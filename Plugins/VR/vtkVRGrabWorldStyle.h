@@ -56,11 +56,11 @@ protected:
   virtual void HandleButton(const vtkVREvent& event);
   virtual void HandleTracker(const vtkVREvent& event);
 
-  bool EnableTranslate;				/* mirrors the button assigned the "Translate World" role */
-  bool EnableRotate;				/* mirrors the button assigned the "Rotate World" role */
+  bool EnableTranslate;                         /* mirrors the button assigned the "Translate World" role */
+  bool EnableRotate;                            /* mirrors the button assigned the "Rotate World" role */
 
-  bool IsInitialTransRecorded;			/* flag indicating that we're in the middle of a translation operation */
-  bool IsInitialRotRecorded;			/* flag indicating that we're in the middle of a rotation operation */
+  bool IsInitialTransRecorded;                  /* flag indicating that we're in the middle of a translation operation */
+  bool IsInitialRotRecorded;                    /* flag indicating that we're in the middle of a rotation operation */
                                                 /* NOTE: only one of translation or rotation can be active at a time */
 
   vtkNew<vtkMatrix4x4> InverseInitialTransMatrix;
@@ -73,8 +73,8 @@ private:
   vtkVRGrabWorldStyle(const vtkVRGrabWorldStyle&); // Not implemented
   void operator=(const vtkVRGrabWorldStyle&); // Not implemented
 
-  float		GetSpeedFactor(vtkCamera *cam);		/* BS: what does this do? */
-  vtkCamera	*GetCamera();
+  float         GetSpeedFactor(vtkCamera *cam);        /* BS: what does this do? */
+  vtkCamera     *GetCamera();
 };
 
 #endif //__vtkVRGrabWorldStyle.h_

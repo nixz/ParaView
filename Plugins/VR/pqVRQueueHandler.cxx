@@ -174,7 +174,7 @@ void pqVRQueueHandler::processEvents()
       {
       if (style->HandleEvent(event))
         {
-        break;		// BS: I presume this means, break out of the for loop once an event is handled?
+        break;       // BS: I presume this means, break out of the for loop once an event is handled?
         }
       }
     }

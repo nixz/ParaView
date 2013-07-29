@@ -35,10 +35,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkPVXMLElement.h"
 #include "vtkSMPropertyHelper.h"
 #include "vtkSMProxy.h"
-#include "vtkSMRenderViewProxy.h"	/* for acquiring the active camera */
-#include "vtkVRQueue.h"			/* for the vtkVREvent structure */
-#include "vtkCamera.h"			/* needed by vtkSMRenderViewProxy.h */
-#include "vtkMath.h"			/* needed for Cross product function */
+#include "vtkSMRenderViewProxy.h"       /* for acquiring the active camera */
+#include "vtkVRQueue.h"                 /* for the vtkVREvent structure */
+#include "vtkCamera.h"                  /* needed by vtkSMRenderViewProxy.h */
+#include "vtkMath.h"                    /* needed for Cross product function */
 
 #include <sstream>
 #include <algorithm>
@@ -125,7 +125,7 @@ void vtkVRSpaceNavigatorGrabWorldStyle::HandleAnalog ( const vtkVREvent& event )
       camera->SetFocalPoint(focal_point);
 
       // Set all the other camera values
-      camera->Dolly(pow(1.01, analog_input[1]));	/* BS: why the use of pow()?  And why doesn't this use the forward_vector? */
+      camera->Dolly(pow(1.01, analog_input[1]));        /* BS: why the use of pow()?  And why doesn't this use the forward_vector? */
       camera->Elevation(  1.0*analog_input[3]);
       camera->Azimuth(    1.0*analog_input[5]);
       camera->Roll(       1.0*analog_input[4]);

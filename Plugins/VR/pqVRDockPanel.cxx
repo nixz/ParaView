@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkVRInteractorStyle.h"
 #include "vtkVRInteractorStyleFactory.h"
 #include "vtkWeakPointer.h"
+#include "vtkNew.h"
 
 #include "pqActiveObjects.h"
 #include "pqApplicationCore.h"

@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkObjectFactory.h"
 #include "vtkVRTrackStyle.h"
 #include "vtkVRGrabWorldStyle.h"
+#include "vtkVRGrabTransformStyle.h"
 #include "vtkVRControlSlicePositionStyle.h"
 #include "vtkVRControlSliceOrientationStyle.h"
 #include "vtkVRSpaceNavigatorGrabWorldStyle.h"
@@ -64,6 +65,10 @@ vtkVRInteractorStyleFactory::vtkVRInteractorStyleFactory()
   // Add GrabWorldStyle
   this->InteractorStyleClassNames.push_back("vtkVRGrabWorldStyle");
   this->InteractorStyleDescriptions.push_back("Grab");
+
+  // Add GrabTransformStyle
+  this->InteractorStyleClassNames.push_back("vtkVRGrabTransformStyle");
+  this->InteractorStyleDescriptions.push_back("Grab Transform");
 
   // Add ControlSlicePositionStyle
   this->InteractorStyleClassNames.push_back("vtkVRControlSlicePositionStyle");
@@ -157,6 +162,10 @@ vtkVRInteractorStyleFactory::NewInteractorStyleFromClassName(
   else if (name == "vtkVRGrabWorldStyle")
     {
     return vtkVRGrabWorldStyle::New();
+    }
+  else if (name == "vtkVRGrabTransformStyle")
+    {
+    return vtkVRGrabTransformStyle::New();
     }
   else if (name == "vtkVRControlSlicePositionStyle")
     {

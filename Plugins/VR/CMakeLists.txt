@@ -68,6 +68,7 @@ QT4_WRAP_CPP(MOC_SRCS
   vtkVRInteractorStyleFactory.h
   vtkVRTrackStyle.h
   vtkVRGrabWorldStyle.h
+  vtkVRGrabTransformStyle.h
   vtkVRControlSliceOrientationStyle.h
   vtkVRControlSlicePositionStyle.h
   )
@@ -93,6 +94,7 @@ SET( VR_SOURCE_FILES
   vtkVRSkeletonStyle.cxx
   vtkVRTrackStyle.cxx
   vtkVRGrabWorldStyle.cxx
+  vtkVRGrabTransformStyle.cxx
   vtkVRControlSliceOrientationStyle.cxx
   vtkVRControlSlicePositionStyle.cxx
   vtkVRSpaceNavigatorGrabWorldStyle.cxx
